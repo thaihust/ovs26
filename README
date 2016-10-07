@@ -1,6 +1,10 @@
 # ovs26
 
-Build DPDK 16.07 and OVS-DPDK 2.6 from git repo on Ubuntu 16.04 running as a OpenStack compute node.
+This README describes how to build  and integrate DPDK 16.07 and OVS-DPDK 2.6 from git master
+on Ubuntu 16.04 running as a OpenStack compute node.
+
+Oct 7, 2016 tikoehle
+
 
 ------------------------------------------------------------------------
 Stop existing ovs and services
@@ -14,8 +18,8 @@ Deinstall existing ubuntu dpdk 2.2 and ovs-dpdk 2.5
 -------------------------------------------------------------------------
 sudo apt remove openvswitch-switch-dpdk
 
-Before removing the dpdk package make a copy of /lib/dpdk/dpdk-init script because we need it later when
-integrating our dpdk into dpdk startup. Removing thge dpdk package removes this script.
+Before removing the dpdk package make a backup copy of /lib/dpdk/dpdk-init script because we need it
+later when integrating our dpdk into dpdk startup. Removing thge dpdk package removes /lib/dpdk/dpdk-init.
 
 sudo apt remove dpdk
 
@@ -116,10 +120,13 @@ Jumbo frame mbuf size requires to increase socket mem from "2048,2048" to "4096,
 coremask, socket-mem, vhost-owner, .. are now with ovs 2.6 directly passed to the dpdk EAL via the ovs db and
 /etc/default/openvswitch-switch is no longer needed. In fact you have to disable DPDK_OPTS in /etc/default/openvswitch-switch.
 
+Here is the new ovs 2.6 way of configuring these parameters, formerly called DPDK_OPTS:
+
 ovs-vsctl --no-wait set Open_vSwitch . other_config:dpdk-init=true
 ovs-vsctl --no-wait set Open_vSwitch . other_config:dpdk-socket-mem="4096,4096"
 ovs-vsctl --no-wait set Open_vSwitch . other_config:dpdk-lcore-mask=0x300
 ovs-vsctl --no-wait set Open_vSwitch . other_config:dpdk-extra="--vhost-owner libvirt-qemu:kvm --vhost-perm 0664"
+
 ovs-vsctl get Open_vSwitch . other_config
 
 export DB_SOCK=/var/run/openvswitch/db.sock
@@ -129,8 +136,8 @@ export DB_SOCK=/var/run/openvswitch/db.sock
 --detach \
 --monitor
 
-Now after starting the vswitchd you should see lot of EAL messages and check there should be no errors. If
-everything is good then switch it off.
+Now after starting the vswitchd you should see lot of EAL messages and check there should be no errors.
+If everything is good then switch it off.
 
 -------------------------------------------------------------------------
 Stop db and vswitchd 
@@ -147,11 +154,12 @@ Integrate DPDK 16.07 and OVS-DPDK 2.6 into existing startup services on Ubuntu 1
 
 ln -s /usr/src/dpdk-16.07/install/share/dpdk/tools/dpdk-devbind.py /sbin/dpdk_nic_bind
 systemctl unmask dpdk.service
-Restory your backup copy of /lib/dpdk/dpdk-init
+Restore your backup copy of /lib/dpdk/dpdk-init
 systemctl restart dpdk.service
 dpdk_nic_bind --status
 
-Should have the interface now dpdk bound, otherwise vfio_pci module is not loaded or modprobe it manually or shutdown -r now.
+Should have the interface in /etc/dpdk/interfaces bound to dpdk driver, otherwise vfio_pci module is not
+loaded or modprobe it manually (modprobe vfio_pci) or shutdown -r now.
 
 
 2. ovs-dpdk
@@ -176,6 +184,7 @@ systemctl start openvswitch-switch.service
 Test
 -------------------------------------------------------------------------
 Add dpdk br and port and configure port for jumbo frame:
+
 ovs-vsctl add-br br-data -- set bridge br-data datapath_type=netdev
 ovs-vsctl add-port br-data dpdk0 -- set interface dpdk0 type=dpdk -- set Interface dpdk0 mtu_request=9000
 
@@ -195,6 +204,8 @@ Mitaka Jumbo Frame Size
 -------------------------------------------------------------------------
 When nova booting a vm you need to manually set the mtu size for the vhu port, for example:
 ovs-vsctl set Interface vhu6ef65d50-d7 mtu_request=9000
+
+I did not find the feature in Mitaka.
 
 Check that all vhost-user sockets were created with the correct ownership:
 ls -la /var/run/openvswitch

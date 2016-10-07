@@ -14,7 +14,8 @@ Deinstall existing ubuntu dpdk 2.2 and ovs-dpdk 2.5
 -------------------------------------------------------------------------
 sudo apt remove openvswitch-switch-dpdk
 
-Before removing the dpdk package make a copy of /lib/dpdk/dpdk-init script because we need it later when integrating our dpdk into dpdk startup. Removing thge dpdk package removes this script.
+Before removing the dpdk package make a copy of /lib/dpdk/dpdk-init script because we need it later when
+integrating our dpdk into dpdk startup. Removing thge dpdk package removes this script.
 
 sudo apt remove dpdk
 
@@ -42,13 +43,18 @@ cd /usr/src
 wget http://dpdk.org/browse/dpdk/snapshot/dpdk-16.07.zip
 unzip dpdk-16.07.zip
 
-Now you need to modify the dpdk.org code for vhost-owner permissions and another fix to chmod the vhu sockets correctly (steps 1 and 2 below). This is only required to make it work with Ubuntu 16.04. Note that the Ubuntu dpdk and openvswitch source packages will have these fixes already in the repository but the openvswitch package curently does not build because of several issues.
+Now you need to modify the dpdk.org code for vhost-owner permissions and another fix to chmod the vhu sockets
+correctly (steps 1 and 2 below). This is only required to make it work with Ubuntu 16.04. Note that the
+Ubuntu dpdk and openvswitch source packages will have these fixes already in the repository but the openvswitch
+package curently does not build because of several issues.
 
-1. Canonicals vhost-owner code 
+1. Canonicals vhost-owner code
+
 Patch the dpdk 16.07 source with this patch:
 https://git.launchpad.net/~ubuntu-server/dpdk/tree/debian/patches/fix-vhost-user-socket-permission.patch?h=ubuntu-yakkety-dpdk16.07
 
 2. Fix to chmod vhost-user sockets, apply this patch:
+
 https://bugs.launchpad.net/ubuntu/+source/dpdk/+bug/1625542/+attachment/4748866/+files/dpdk_vhost_permission_tikoehle.patch
 
 
@@ -106,7 +112,9 @@ ovs-vsctl show
 -------------------------------------------------------------------------
 Start vswitchd once manually to configure OVS EAL args for dpdk
 -------------------------------------------------------------------------
-Jumbo frame mbuf size requires to increase socket mem from "2048,2048" to "4096,4096". The args to configure coremask, socket-mem, vhost-owner, .. are now with ovs 2.6 directly passed to the dpdk EAL via the ovs db and /etc/default/openvswitch-switch is no longer needed. In fact you have to disable DPDK_OPTS in /etc/default/openvswitch-switch.
+Jumbo frame mbuf size requires to increase socket mem from "2048,2048" to "4096,4096". The args to configure
+coremask, socket-mem, vhost-owner, .. are now with ovs 2.6 directly passed to the dpdk EAL via the ovs db and
+/etc/default/openvswitch-switch is no longer needed. In fact you have to disable DPDK_OPTS in /etc/default/openvswitch-switch.
 
 ovs-vsctl --no-wait set Open_vSwitch . other_config:dpdk-init=true
 ovs-vsctl --no-wait set Open_vSwitch . other_config:dpdk-socket-mem="4096,4096"
@@ -121,7 +129,8 @@ export DB_SOCK=/var/run/openvswitch/db.sock
 --detach \
 --monitor
 
-Now after starting the vswitchd you should see lot of EAL messages and check there should be no errors. If everything is good then switch it off.
+Now after starting the vswitchd you should see lot of EAL messages and check there should be no errors. If
+everything is good then switch it off.
 
 -------------------------------------------------------------------------
 Stop db and vswitchd 
@@ -135,6 +144,7 @@ Integrate DPDK 16.07 and OVS-DPDK 2.6 into existing startup services on Ubuntu 1
 -------------------------------------------------------------------------
 
 1. dpdk
+
 ln -s /usr/src/dpdk-16.07/install/share/dpdk/tools/dpdk-devbind.py /sbin/dpdk_nic_bind
 systemctl unmask dpdk.service
 Restory your backup copy of /lib/dpdk/dpdk-init
@@ -143,7 +153,9 @@ dpdk_nic_bind --status
 
 Should have the interface now dpdk bound, otherwise vfio_pci module is not loaded or modprobe it manually or shutdown -r now.
 
+
 2. ovs-dpdk
+
 mkdir -p /usr/lib/openvswitch-switch-dpdk
 cp /usr/local/sbin/ovs-vswitchd /usr/lib/openvswitch-switch-dpdk/ovs-vswitchd-dpdk
 cp /usr/local/sbin/ovs-vswitchd /usr/lib/openvswitch-switch/ovs-vswitchd
@@ -158,6 +170,7 @@ cp /usr/local/bin/ovs* /usr/bin/
 
 systemctl unmask openvswitch-switch.service
 systemctl start openvswitch-switch.service
+
 
 -------------------------------------------------------------------------
 Test
@@ -176,6 +189,7 @@ Restart nova / neutron services:
 service nova-compute start
 service neutron-openvswitch-agent start
 
+
 -------------------------------------------------------------------------
 Mitaka Jumbo Frame Size
 -------------------------------------------------------------------------
@@ -189,7 +203,8 @@ ls -la /var/run/openvswitch
 -------------------------------------------------------------------------
 Canonicals dpdk and ovs source packages
 -------------------------------------------------------------------------
-I admit the ovs-dpdk integration in Ubuntu 16.04, as described above, is a crude hack. There are currently some issues to build the openvswitch package with a dpdk enabled vswitchd:
+I admit the ovs-dpdk integration in Ubuntu 16.04, as described above, is a crude hack. There are currently
+some issues to build the openvswitch package with a dpdk enabled vswitchd:
 
 https://bugs.launchpad.net/ubuntu/+source/openvswitch-dpdk/+bug/1629271
 

@@ -37,9 +37,8 @@ unzip dpdk-16.07.zip
 Now you need to modify the dpdk.org code for vhost-owner permissions and 
 another fix to chmod the vhu sockets correctly (steps 1 and 2 below). 
 This is only required to make it work with Ubuntu 16.04. Note that the
-Ubuntu dpdk and openvswitch source packages will have these fixes already 
-in the repository but the openvswitch package curently does not build 
-because of several issues.
+Ubuntu dpdk and openvswitch apt source packages will have these fixes 
+already in the repository.
 
 1. Canonicals vhost-owner code
 

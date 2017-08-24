@@ -7,7 +7,7 @@ Oct 7, 2016 tikoehle
 
 ------------------------------------------------------------------------
 
-Ubuntu 16.04 main apt repository provises a ovs-dpdk 2.5 package which
+Ubuntu 16.04 main apt repository provides a ovs-dpdk 2.5 package which
 does not support jumbo frame size forwarding in the dpdk packet path.
 This build integrates the version with jumbo frame support into Ubuntu 
 16.04 (LTS). Officially supported is this only with 17.01 / 17.04 (Newton)
@@ -34,10 +34,12 @@ cd /usr/src
 wget http://dpdk.org/browse/dpdk/snapshot/dpdk-16.07.zip
 unzip dpdk-16.07.zip
 
-Now you need to modify the dpdk.org code for vhost-owner permissions and another fix to chmod the vhu sockets
-correctly (steps 1 and 2 below). This is only required to make it work with Ubuntu 16.04. Note that the
-Ubuntu dpdk and openvswitch source packages will have these fixes already in the repository but the openvswitch
-package curently does not build because of several issues.
+Now you need to modify the dpdk.org code for vhost-owner permissions and 
+another fix to chmod the vhu sockets correctly (steps 1 and 2 below). 
+This is only required to make it work with Ubuntu 16.04. Note that the
+Ubuntu dpdk and openvswitch source packages will have these fixes already 
+in the repository but the openvswitch package curently does not build 
+because of several issues.
 
 1. Canonicals vhost-owner code
 

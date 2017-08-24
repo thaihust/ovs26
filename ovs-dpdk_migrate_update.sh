@@ -1,15 +1,16 @@
 #!/bin/bash
 #
 # Build DPDK and OVS-DPDK from GIT and integrate it in Ubuntu 16.04.
-# The dpdk source tar contains patches for setting vhost-owner and another fix.
+# The dpdk source tar contains patches for setting vhost-owner permissions.
 #
-# Mar 21, 2017 - Timo Koehler
-
 # The OVS 2.6.90 and DPDK 16.07 code is pre-release from git from around May 2016.
 # It misses some fixes from OVS 2.6.1 and DPDK 16.07.2 released code. 
 #
-# This script rebuilds ovs and ovs-dpdk after apt update/upgrade.
+# This script also rebuilds DPDK and OVS-DPDK after apt update/upgrade with a ovs
+# package dependency.
 #
+# Mar 21, 2017 - Timo Koehler
+
 dpdk_code="dpdk-16.07-vhostowner.tar.gz"
 ovs_dpdk_code="ovs26.tar.gz"
 dpdk_code_md5="0df14069e1d922e9b152911a9cbb4754"

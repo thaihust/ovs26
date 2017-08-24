@@ -1,47 +1,34 @@
-# ovs26
+------------------------------------------------------------------------
 
-This README describes how to build  and integrate DPDK 16.07 and OVS-DPDK 2.6 from git master
-on Ubuntu 16.04 running as a OpenStack compute node.
+This project builds and integrates DPDK 16.07 and OVS-DPDK 2.6.90 from 
+git master into Ubuntu 16.04 (LTS) / OpenStack Mitaka (LTS).
 
 Oct 7, 2016 tikoehle
 
+------------------------------------------------------------------------
+
+Ubuntu 16.04 main apt repository provises a ovs-dpdk 2.5 package which
+does not support jumbo frame size forwarding in the dpdk packet path.
+This build integrates the version with jumbo frame support into Ubuntu 
+16.04 (LTS). Officially supported is this only with 17.01 / 17.04 (Newton)
+but not 16.04 (LTS) / Mitaka (LTS).
+
+Also Canonical has added code to set the ownership and permissions of
+vhost-user ports under ovs. This code does not exist in dpdk git master.
+Also with ovs 2.6 there is a new way to configure ovs via dpdk eal layer.
+
+The installation script builds and installs the patched dpdk and ovs
+code on top of the standard ovs 2.5 package. Note that after apt update
+/upgrade, if there is any ovs dependency, then you need to repeat the 
+installation, otherwise ovs 2.5 is running again. During the time of
+doing this work Canonicals ovs-dpdk source package was broken, otherwise
+I had updated the source package directly.
+
+The following patches have been integrated.
+
 
 ------------------------------------------------------------------------
-Stop existing ovs and services
-------------------------------------------------------------------------
-service nova-compute stop
-service neutron-openvswitch-agent stop
-service openvswitch-switch stop
-
--------------------------------------------------------------------------
-Deinstall existing ubuntu dpdk 2.2 and ovs-dpdk 2.5
--------------------------------------------------------------------------
-sudo apt remove openvswitch-switch-dpdk
-
-Before removing the dpdk package make a backup copy of /lib/dpdk/dpdk-init script because we need it
-later when integrating our dpdk into dpdk startup. Removing thge dpdk package removes /lib/dpdk/dpdk-init.
-
-sudo apt remove dpdk
-
-------------------------------------------------------------------------
-Ubuntu 16.04: DPDK 16.07 + OVS-DPDK 2.6 build prerequisite packages
-------------------------------------------------------------------------
-apt install unzip
-apt install make
-apt install gcc
-apt install clang
-apt install openssl
-apt install libcap-ng
-apt install autoconf
-apt install libtool
-apt install pyftpdlib
-apt install python3-pyftpdlib
-apt install clibcurl4-openssl-dev pkg-config libssl-dev libsslcommon2-dev
-apt install pkg-config libssl-dev libsslcommon2-dev
-apt install libcap-ng-dev
-
-------------------------------------------------------------------------
-DPDK 16.07 build
+DPDK 16.07
 ------------------------------------------------------------------------
 cd /usr/src
 wget http://dpdk.org/browse/dpdk/snapshot/dpdk-16.07.zip
@@ -61,66 +48,33 @@ https://git.launchpad.net/~ubuntu-server/dpdk/tree/debian/patches/fix-vhost-user
 
 https://bugs.launchpad.net/ubuntu/+source/dpdk/+bug/1625542/+attachment/4748866/+files/dpdk_vhost_permission_tikoehle.patch
 
-
-export DPDK_DIR=/usr/src/dpdk-16.07
-cd $DPDK_DIR
-export DPDK_TARGET=x86_64-native-linuxapp-gcc
-export DPDK_BUILD=$DPDK_DIR/$DPDK_TARGET
-make install T=$DPDK_TARGET DESTDIR=install
-
 Reference:
 https://github.com/openvswitch/ovs/blob/branch-2.6/INSTALL.DPDK.md
 
 
 ------------------------------------------------------------------------
-OVS-DPDK 2.6 build
+OVS-DPDK 2.6.90
 ------------------------------------------------------------------------
-cd /usr/src
-git clone https://github.com/openvswitch/ovs.git
-export OVS_DIR=/usr/src/ovs
-cd $OVS_DIR
-./boot.sh
-./configure --with-dpdk=$DPDK_BUILD --localstatedir=/var --runstatedir=/var/run
-make install
-
-Installs into /usr/local/sbin/
 
 Reference:
 https://github.com/openvswitch/ovs/blob/branch-2.6/INSTALL.DPDK.md
 
 
 -------------------------------------------------------------------------
-Create and initialize the ovs db: start ovsdb-server manually
-------------------------------------------------------------------------
-mv /etc/openvswitch /etc/openvswitch.off
-mkdir -p /etc/openvswitch
-ovsdb-tool create /etc/openvswitch/conf.db /usr/local/share/openvswitch/vswitch.ovsschema
-
-/usr/local/sbin/ovsdb-server /etc/openvswitch/conf.db -vconsole:emer -vsyslog:err -vfile:info \
---remote=punix:/var/run/openvswitch/db.sock \
---remote=db:Open_vSwitch,Open_vSwitch,manager_options \
---private-key=db:Open_vSwitch,SSL,private_key \
---certificate=db:Open_vSwitch,SSL,certificate \
---bootstrap-ca-cert=db:Open_vSwitch,SSL,ca_cert \
---no-chdir --log-file=/var/log/openvswitch/ovsdb-server.log \
---pidfile=/var/run/openvswitch/ovsdb-server.pid --detach --monitor
-
-ovs-vsctl --no-wait init                                 # do this once
-
-root@compute29:/usr/src/ovs# which ovs-vsctl
-/usr/local/bin/ovs-vsctl
-
-ovs-vsctl show
-
-
+How to configure ovs 2.6 via dpdk EAL args
 -------------------------------------------------------------------------
-Start vswitchd once manually to configure OVS EAL args for dpdk
--------------------------------------------------------------------------
-Jumbo frame mbuf size requires to increase socket mem from "2048,2048" to "4096,4096". The args to configure
-coremask, socket-mem, vhost-owner, .. are now with ovs 2.6 directly passed to the dpdk EAL via the ovs db and
-/etc/default/openvswitch-switch is no longer needed. In fact you have to disable DPDK_OPTS in /etc/default/openvswitch-switch.
+Jumbo frame mbuf size requires to increase socket mem from "2048,2048" to 
+"4096,4096". The args to configure coremask, socket-mem, vhost-owner, .. 
+are now with ovs 2.6 directly passed to the dpdk EAL via the ovs db and
+/etc/default/openvswitch-switch is no longer needed. In fact you have to 
+disable DPDK_OPTS in /etc/default/openvswitch-switch.
 
-Here is the new ovs 2.6 way of configuring these parameters, formerly called DPDK_OPTS:
+Disable it:
+/etc/default/openvswitch-switch
+#DPDK_OPTS
+
+Here is the new ovs 2.6 way of configuring these parameters, formerly called 
+DPDK_OPTS:
 
 ovs-vsctl --no-wait set Open_vSwitch . other_config:dpdk-init=true
 ovs-vsctl --no-wait set Open_vSwitch . other_config:dpdk-socket-mem="4096,4096"
@@ -129,55 +83,23 @@ ovs-vsctl --no-wait set Open_vSwitch . other_config:dpdk-extra="--vhost-owner li
 
 ovs-vsctl get Open_vSwitch . other_config
 
-export DB_SOCK=/var/run/openvswitch/db.sock
-/usr/local/sbin/ovs-vswitchd unix:$DB_SOCK -vconsole:emer -vsyslog:err -vfile:info --mlockall --no-chdir \
---log-file=/var/log/openvswitch/ovs-vswitchd.log \
---pidfile=/var/run/openvswitch/ovs-vswitchd.pid \
---detach \
---monitor
-
-Now after starting the vswitchd you should see lot of EAL messages and check there should be no errors.
-If everything is good then switch it off.
-
--------------------------------------------------------------------------
-Stop db and vswitchd 
--------------------------------------------------------------------------
-ovs-appctl -t ovs-vswitchd exit
-ovs-appctl -t ovsdb-server exit
+There are other important parameters. The above is the minimal set to
+get it running. 
 
 
 -------------------------------------------------------------------------
-Integrate DPDK 16.07 and OVS-DPDK 2.6 into existing startup services on Ubuntu 16.04
+Binding pNIC interface to DPDK 
 -------------------------------------------------------------------------
+As usual, for the external packet path with ovs-dpdk you need to bind the 
+pNIC interface to the dpdk driver. Check with:
 
-1. dpdk
-
-ln -s /usr/src/dpdk-16.07/install/share/dpdk/tools/dpdk-devbind.py /sbin/dpdk_nic_bind
-systemctl unmask dpdk.service
-Restore your backup copy of /lib/dpdk/dpdk-init
-systemctl restart dpdk.service
 dpdk_nic_bind --status
 
-Should have the interface in /etc/dpdk/interfaces bound to dpdk driver, otherwise vfio_pci module is not
-loaded or modprobe it manually (modprobe vfio_pci) or shutdown -r now.
+Should have the interface in /etc/dpdk/interfaces bound to dpdk driver, 
+otherwise vfio_pci module is not loaded or modprobe it manually (modprobe 
+vfio_pci).
 
-
-2. ovs-dpdk
-
-mkdir -p /usr/lib/openvswitch-switch-dpdk
-cp /usr/local/sbin/ovs-vswitchd /usr/lib/openvswitch-switch-dpdk/ovs-vswitchd-dpdk
-cp /usr/local/sbin/ovs-vswitchd /usr/lib/openvswitch-switch/ovs-vswitchd
-cp /usr/local/sbin/ovsdb-server /usr/sbin/ovsdb-server
-cp /usr/local/share/openvswitch/vswitch.ovsschema /usr/share/openvswitch/vswitch.ovsschema
-
-/etc/default/openvswitch-switch
-#DPDK_OPTS
-
-Copy the new 2.6 bins to /usr/bin/ otherwise L2 agent will not find it.
-cp /usr/local/bin/ovs* /usr/bin/
-
-systemctl unmask openvswitch-switch.service
-systemctl start openvswitch-switch.service
+systemctl restart dpdk.service
 
 
 -------------------------------------------------------------------------
@@ -202,7 +124,9 @@ service neutron-openvswitch-agent start
 -------------------------------------------------------------------------
 Mitaka Jumbo Frame Size
 -------------------------------------------------------------------------
-When nova booting a vm you need to manually set the mtu size for the vhu port, for example:
+When nova booting a vm you need to manually set the mtu size for the vhu 
+port, for example:
+
 ovs-vsctl set Interface vhu6ef65d50-d7 mtu_request=9000
 
 I did not find the feature in Mitaka.
@@ -214,15 +138,17 @@ ls -la /var/run/openvswitch
 -------------------------------------------------------------------------
 Canonicals dpdk and ovs source packages
 -------------------------------------------------------------------------
-I admit the ovs-dpdk integration in Ubuntu 16.04, as described above, is a crude hack. There are currently
-some issues to build the openvswitch package with a dpdk enabled vswitchd:
+At the time of writing this there were some issues to build the openvswitch 
+package with a dpdk enabled vswitchd:
 
 https://bugs.launchpad.net/ubuntu/+source/openvswitch-dpdk/+bug/1629271
 
-The dpdk 16.07 source package builds just fine, creates all .deb packages and installs correctly without any dependency issues.
+The dpdk 16.07 source package builds just fine, creates all .deb packages 
+and installs correctly without any dependency issues.
 
 The current latest Ubuntu dpdk and ovs source packages are:
 
 https://launchpad.net/ubuntu/+source/dpdk/16.07-0ubuntu5
 https://launchpad.net/ubuntu/+source/openvswitch/2.6.0-0ubuntu2
+
 

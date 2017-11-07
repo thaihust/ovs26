@@ -46,12 +46,49 @@ already in the repository.
 Patch the dpdk 16.07 source with this patch:
 https://git.launchpad.net/~ubuntu-server/dpdk/tree/debian/patches/fix-vhost-user-socket-permission.patch?h=ubuntu-yakkety-dpdk16.07
 
-2. Fix to chmod vhost-user sockets, apply this patch:
+2. Fix some socket issue with vhost-user sockets:
 
 https://bugs.launchpad.net/ubuntu/+source/dpdk/+bug/1625542/+attachment/4748866/+files/dpdk_vhost_permission_tikoehle.patch
 
+A patch for both issues is here [1]. It is based on Canonicals code and is 
+what is packaged today for Ubuntu DPDK 2.2 + OVS 2.5. I have added and tested 
+the code to my pilot deployment OVS 2.6.90 and DPDK 16.07 on Ubuntu 16.04. 
+While testing I found issue 2 and created a patch. For details see the 
+corresponding bug.
+
+The patch implements ownership and permissions settings for vhost_user 
+created sockets. The DPDK EAL commandline options are:
+
+ovs-vsctl --no-wait set Open_vSwitch . other_config:dpdk-extra="--vhost-owner libvirt-qemu:kvm --vhost-perm 0664"
+
+If everything works you should see the sockets created with the 
+vhost-owner and vhost-perm as configured above. 
+
+$ sudo ovs-vsctl show
+    Bridge br-int
+        fail_mode: secure
+        Port "vhua689d816-bb"
+            tag: 67
+            trunks: [1120, 1121, 1122, 1123, 1124, 1129, 1130, 1140]
+            Interface "vhua689d816-bb"
+                type: dpdkvhostuser
+        Port "vhu6dbe5673-10"
+            tag: 63
+            trunks: [1120, 1121, 1122, 1123, 1124, 1129, 1130, 1140]
+            Interface "vhu6dbe5673-10"
+                type: dpdkvhostuser
+
+And there are the sockets created with libvirt-qemu:kvm and flags 0664.
+
+localadmin@compute10:/var/run/openvswitch$ ls -la
+::::
+srw-rw-r--  1 libvirt-qemu kvm     0 Nov  6 22:48 vhu6dbe5673-10
+srw-rw-r--  1 libvirt-qemu kvm     0 Nov  6 22:52 vhua689d816-bb
+
+
 Reference:
-https://github.com/openvswitch/ovs/blob/branch-2.6/INSTALL.DPDK.md
+[1] vhost_user_permissions.patch
+[2] https://github.com/openvswitch/ovs/blob/branch-2.6/INSTALL.DPDK.md
 
 
 ------------------------------------------------------------------------

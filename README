@@ -7,26 +7,23 @@ Oct 7, 2016 tikoehle
 
 ------------------------------------------------------------------------
 
-Ubuntu 16.04 main apt repository provides a ovs-dpdk 2.5 package which
-does not support jumbo frame size forwarding in the dpdk packet path.
-This build integrates the version with jumbo frame support into Ubuntu 
+Ubuntu 16.04 main apt repository provides a OVS-DPDK 2.5 package which
+does not support jumbo frame size forwarding in the DPDK packet path.
+This build integrates the OVS version with jumbo frame support on Ubuntu 
 16.04 (LTS). Officially supported is this first with 16.10/Newton (EoS 
 07/2017), 17.04/Ocata (EoS 01/2018), next LTS 18.04 (2018) but not with
 16.04 (LTS) / Mitaka (LTS).
 
 Also Canonical has added code to set the ownership and permissions of
-vhost-user ports under ovs. This code does not exist in dpdk git master.
-Also with ovs 2.6 there is a new way to configure ovs via dpdk eal layer.
+vhost-user created sockets. This code does not exist in DPDK git master.
+Also with OVS 2.6 there is a new way to configure OVS via the DPDK EAL.
 
-The installation script builds and installs the patched dpdk and ovs
-code on top of the standard ovs 2.5 package. Note that after apt update
-/upgrade, if there is any ovs dependency, then you need to repeat the 
-installation, otherwise ovs 2.5 is running again. During the time of
-doing this work Canonicals ovs-dpdk source package was broken, otherwise
-I had updated the source package directly.
+The installation script in this repo shows how to build and integrate it
+on Ubuntu 16.04. During the time of doing the work Canonicals OVS-DPDK 
+source package was broken, otherwise I had updated the source package 
+directly.
 
 The following patches have been integrated.
-
 
 ------------------------------------------------------------------------
 DPDK 16.07
@@ -35,34 +32,30 @@ cd /usr/src
 wget http://dpdk.org/browse/dpdk/snapshot/dpdk-16.07.zip
 unzip dpdk-16.07.zip
 
-Now you need to modify the dpdk.org code for vhost-owner permissions and 
-another fix to chmod the vhu sockets correctly (steps 1 and 2 below). 
-This is only required to make it work with Ubuntu 16.04. Note that the
-Ubuntu dpdk and openvswitch apt source packages will have these fixes 
-already in the repository.
-
 1. Canonicals vhost-owner code
 
-Patch the dpdk 16.07 source with this patch:
+Patch the DPDK 16.07 source with this patch:
 https://git.launchpad.net/~ubuntu-server/dpdk/tree/debian/patches/fix-vhost-user-socket-permission.patch?h=ubuntu-yakkety-dpdk16.07
 
 2. Fix some socket issue with vhost-user sockets:
 
 https://bugs.launchpad.net/ubuntu/+source/dpdk/+bug/1625542/+attachment/4748866/+files/dpdk_vhost_permission_tikoehle.patch
 
-A patch for both issues is here [1]. It is based on Canonicals code and is 
-what is packaged today for Ubuntu DPDK 2.2 + OVS 2.5. I have added and tested 
-the code to my pilot deployment OVS 2.6.90 and DPDK 16.07 on Ubuntu 16.04. 
-While testing I found issue 2 and created a patch. For details see the 
-corresponding bug.
 
-The patch implements ownership and permissions settings for vhost_user 
-created sockets. The DPDK EAL commandline options are:
+A patch for both issues is here [1]. It is based on Canonicals code [2].
+I have added the code to my pilot OVS 2.6.90 + DPDK 16.07 deployment on 
+Ubuntu 16.04. While testing I found issue #2 and created another patch. 
+This code (one liner) may be different to what Canonical packages. For 
+details see the corresponding bug-id.
+
+The patch [1] implements ownership and permissions settings for vhost_user 
+created sockets. The added DPDK EAL command line option is:
 
 ovs-vsctl --no-wait set Open_vSwitch . other_config:dpdk-extra="--vhost-owner libvirt-qemu:kvm --vhost-perm 0664"
 
-If everything works you should see the sockets created with the 
-vhost-owner and vhost-perm as configured above. 
+First, create a ovs vhost_user port. If everything works you should see 
+the sockets created with the vhost-owner and vhost-perm as configured 
+above. 
 
 $ sudo ovs-vsctl show
     Bridge br-int
@@ -78,7 +71,7 @@ $ sudo ovs-vsctl show
             Interface "vhu6dbe5673-10"
                 type: dpdkvhostuser
 
-And there are the sockets created with libvirt-qemu:kvm and flags 0664.
+And here are the sockets created with libvirt-qemu:kvm and flags 0664.
 
 localadmin@compute10:/var/run/openvswitch$ ls -la
 ::::
@@ -86,9 +79,10 @@ srw-rw-r--  1 libvirt-qemu kvm     0 Nov  6 22:48 vhu6dbe5673-10
 srw-rw-r--  1 libvirt-qemu kvm     0 Nov  6 22:52 vhua689d816-bb
 
 
-Reference:
+References:
 [1] vhost_user_permissions.patch
-[2] https://github.com/openvswitch/ovs/blob/branch-2.6/INSTALL.DPDK.md
+[2] http://dpdk.org/ml/archives/dev/2016-April/037922.html
+[3] https://github.com/openvswitch/ovs/blob/branch-2.6/INSTALL.DPDK.md
 
 
 ------------------------------------------------------------------------
@@ -100,11 +94,11 @@ https://github.com/openvswitch/ovs/blob/branch-2.6/INSTALL.DPDK.md
 
 
 -------------------------------------------------------------------------
-How to configure ovs 2.6 via dpdk EAL args
+How to configure OVS 2.6 via DPDK EAL
 -------------------------------------------------------------------------
 Jumbo frame mbuf size requires to increase socket mem from "2048,2048" to 
 "4096,4096". The args to configure coremask, socket-mem, vhost-owner, .. 
-are now with ovs 2.6 directly passed to the dpdk EAL via the ovs db and
+are now with OVS 2.6 directly passed to the DPDK EAL via the ovs db and
 /etc/default/openvswitch-switch is no longer needed. In fact you have to 
 disable DPDK_OPTS in /etc/default/openvswitch-switch.
 
@@ -129,7 +123,7 @@ get it running.
 -------------------------------------------------------------------------
 Binding pNIC interface to DPDK 
 -------------------------------------------------------------------------
-As usual, for the external packet path with ovs-dpdk you need to bind the 
+As usual, for the external packet path with OVS-DPDK you need to bind the 
 pNIC interface to the dpdk driver. Check with:
 
 dpdk_nic_bind --status

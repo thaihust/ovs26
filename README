@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------
 
 This project builds and integrates DPDK 16.07 and OVS-DPDK 2.6.90 from 
-git master into Ubuntu 16.04 (LTS) / OpenStack Mitaka (LTS).
+git master on Ubuntu 16.04 (LTS) / OpenStack Mitaka (LTS).
 
 Oct 7, 2016 tikoehle
 
@@ -53,9 +53,9 @@ created sockets. The added DPDK EAL command line option is:
 
 ovs-vsctl --no-wait set Open_vSwitch . other_config:dpdk-extra="--vhost-owner libvirt-qemu:kvm --vhost-perm 0664"
 
-First, create a ovs vhost_user port. If everything works you should see 
-the sockets created with the vhost-owner and vhost-perm as configured 
-above. 
+To test it, first create a ovs vhost_user port. If everything works you 
+should see the sockets created with the vhost-owner and vhost-perm as 
+configured above. 
 
 $ sudo ovs-vsctl show
     Bridge br-int

@@ -81,7 +81,7 @@ srw-rw-r--  1 libvirt-qemu kvm     0 Nov  6 22:52 vhua689d816-bb
 
 References:
 [1] vhost_user_permissions.patch
-[2] http://dpdk.org/ml/archives/dev/2016-April/037922.html
+[2] http://dpdk.org/dev/patchwork/patch/12222/
 [3] https://github.com/openvswitch/ovs/blob/branch-2.6/INSTALL.DPDK.md
 
 
